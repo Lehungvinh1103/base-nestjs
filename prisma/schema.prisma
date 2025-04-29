@@ -1,0 +1,147 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Permission {
+  id          Int      @id @default(autoincrement()) @map("id")
+  name        String   @unique @map("name")
+  description String?  @map("description")
+  roles       RolePermission[]
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("permissions")
+}
+
+model Role {
+  id          Int      @id @default(autoincrement()) @map("id")
+  name        String   @unique @map("name")
+  description String?  @map("description")
+  users       User[]
+  permissions RolePermission[]
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("roles")
+}
+
+model RolePermission {
+  id           Int        @id @default(autoincrement()) @map("id")
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId       Int        @map("role_id")
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  permissionId Int        @map("permission_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model User {
+  id         Int        @id @default(autoincrement()) @map("id")
+  email      String     @unique @map("email") @db.VarChar(255)
+  password   String     @map("password")
+  name       String?    @map("name") @db.VarChar(255)
+  role       Role?       @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  roleId     Int?        @map("role_id")
+  posts      Post[]
+  media      Media[]     
+  affiliates Affiliate[]
+  loginAttempts   Int      @default(0) @map("login_attempts")
+  lastLoginAttempt DateTime @default(now()) @map("last_login_attempt")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+  tokens     Token[]
+
+  @@index([roleId])
+  @@map("users")
+}
+
+model Post {
+  id          Int      @id @default(autoincrement()) @map("id")
+  title       String   @map("title") @db.VarChar(255)
+  description String?  @map("description") @db.Text
+  slug        String   @unique @map("slug") @db.VarChar(255)
+  content     String   @map("content") @db.LongText
+  published   Boolean  @default(false) @map("published")
+  author      User?     @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  authorId    Int?      @map("author_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("posts")
+}
+
+model Media {
+  id          Int      @id @default(autoincrement()) @map("id")
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId      Int?      @map("user_id")
+  uuid        String   @unique @map("uuid")
+  collectionName  String?  @map("collection_name")
+  name        String   @db.VarChar(255) @map("name")
+  fileName    String   @db.VarChar(255) @map("file_name")
+  mimeType    String?   @db.VarChar(255) @map("mime_type")
+  disk        String   @db.VarChar(255) @map("disk")
+  size        Int  @default(0) @map("size")
+  customProperties    Json   @map("custom_properties")
+  orderColumn Int?    @db.UnsignedInt @map("order_column")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  modelHasMedia ModelHasMedia[]
+
+  @@map("media")
+}
+
+model ModelHasMedia {
+  id    Int   @id @default(autoincrement()) @map("id")
+  media Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  mediaId Int @map("media_id")
+  modelType String @db.VarChar(255) @map("model_type")
+  modelId Int @map("model_id")
+  fieldType String @db.VarChar(255) @map("field_type")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([modelType, modelId])
+  @@map("model_has_media")
+}
+
+model Affiliate {
+  id          Int      @id @default(autoincrement()) @map("id")
+  code        String   @unique @map("code")
+  description String?  @map("description")
+  commission  Float    @default(0) @map("commission")
+  clicks      Int      @default(0) @map("clicks")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int      @map("user_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("affiliates")
+}
+
+model Token {
+  id         Int      @id @default(autoincrement()) @map("id")
+  userId     Int      @map("user_id")
+  token      String   @unique @db.VarChar(1000) @map("token")
+  type       String   @map("type") // 'access' or 'refresh'
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("tokens")
+}
+
