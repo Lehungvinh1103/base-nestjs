@@ -50,6 +50,14 @@ export class CreateUserDto {
   name?: string;
 
   @ApiProperty({
+    description: 'The affiliate code of the user (optional)',
+    type: 'string',
+    required: false,
+  })
+  @IsOptional()
+  codeAff?: string;
+
+  @ApiProperty({
     description: 'Avatar of the user',
     type: 'string',
     required: false,
@@ -78,6 +86,14 @@ export class UpdateUserDto {
   @IsOptional()
   @MaxLength(255)
   email?: string;
+
+  @ApiProperty({
+    description: 'The affiliate code of the user (optional)',
+    type: 'string',
+    required: false,
+  })
+  @IsOptional()
+  codeAff?: string;
 
   @ApiProperty({
     description: 'Avatar of the user',

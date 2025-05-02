@@ -30,6 +30,35 @@ export class UsersService {
     },
   };
 
+  private generateAffiliateCode(userId: number): string {
+    // Generate a unique code based on user ID and random string
+    const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
+    return `AFF${userId}${randomStr}`;
+  }
+
+  private async createAffiliateCode(userId: number, tx: Prisma.TransactionClient, customCode?: string) {
+    let code = customCode ?? this.generateAffiliateCode(userId);
+  
+    // Ensure uniqueness
+    let existingCode = await tx.affiliate.findUnique({ where: { code } });
+    while (existingCode) {
+      if (customCode) {
+        throw new BadRequestException('Affiliate code already exists');
+      }
+      code = this.generateAffiliateCode(userId);
+      existingCode = await tx.affiliate.findUnique({ where: { code } });
+    }
+  
+    return tx.affiliate.create({
+      data: {
+        code,
+        userId,
+        description: customCode ? 'Custom affiliate code' : 'Auto-generated affiliate code',
+      },
+    });
+  }
+  
+
   async create(dto: CreateUserDto, files: Express.Multer.File[]): Promise<UserResponseDto> {
     return await this.prisma.$transaction(async (tx) => {
       const existing = await tx.user.findUnique({ where: { email: dto.email } });
@@ -50,6 +79,9 @@ export class UsersService {
         include: this.userInclude,
       });
 
+      // Create affiliate code for the new user
+      const affiliateCode = await this.createAffiliateCode(user.id, tx, dto.codeAff);
+
       let uploadedMedia: Media[] = [];
 
       if (files && files.length > 0) {
@@ -68,6 +100,7 @@ export class UsersService {
 
       return {
         ...this.excludePassword(user),
+        affiliateCode,
         avatar,
       };
     });
@@ -76,7 +109,10 @@ export class UsersService {
 
   async findAll(): Promise<UserResponseDto[]> {
     const users = await this.prisma.user.findMany({
-      include: this.userInclude,
+      include: {
+        ...this.userInclude,
+        affiliates: true,
+      },
     });
 
     const userIds = users.map(user => user.id);
@@ -111,7 +147,10 @@ export class UsersService {
 
     const user = await this.prisma.user.findUnique({
       where: { email },
-      include: this.userInclude,
+      include: {
+        ...this.userInclude,
+        affiliates: true,
+      },
     });
 
     if (!user) throw new NotFoundException(`User with email ${email} not found`);
@@ -163,13 +202,24 @@ export class UsersService {
       const updatedUser = await tx.user.update({
         where: { id },
         data,
-        include: this.userInclude,
+        include: {
+          ...this.userInclude,
+          affiliates: true,
+        },
       });
+
+      // Check if user has an affiliate code, if not create one
+      const existingAffiliate = await tx.affiliate.findFirst({
+        where: { userId: id },
+      });
+
+      if (!existingAffiliate) {
+        await this.createAffiliateCode(id, tx, dto.codeAff);
+      }
 
       let uploadedMedia: Media[] = [];
 
       if (files && files.length > 0) {
-        // Có file mới => upload
         uploadedMedia = await handleMediaUpload({
           tx,
           files,
@@ -180,7 +230,6 @@ export class UsersService {
           collection: 'Avatar',
         });
       } else {
-        // Không có file => lấy media hiện tại
         const existingMedia = await tx.modelHasMedia.findFirst({
           where: {
             modelType: 'User',
@@ -309,7 +358,11 @@ export class UsersService {
 
     const user = await this.prisma.user.findUnique({
       where: { id: numericId },
-      include: this.userInclude,
+      include: {
+        ...this.userInclude,
+        affiliates: true,
+      },
+
     });
 
     if (!user) throw new NotFoundException(`User with ID ${numericId} not found`);
