@@ -23,7 +23,7 @@ export class MediaUtils {
                     select: {
                         id: true,
                         fileName: true,
-
+                        name: true,
                     },
                 },
             },
@@ -35,6 +35,7 @@ export class MediaUtils {
                 mediaMap[relation.fieldType] = {
                     id: relation.media.id,
                     fileName: relation.media.fileName,
+                    name: relation.media.name,
                     url: this.buildMediaUrl(relation.media.id, relation.media.fileName),
                 };
             }
@@ -54,6 +55,7 @@ export class MediaUtils {
                     select: {
                         id: true,
                         fileName: true,
+                        name: true,
                     },
                 },
             },
@@ -68,6 +70,7 @@ export class MediaUtils {
                 grouped[relation.modelId][relation.fieldType] = {
                     id: relation.media.id,
                     fileName: relation.media.fileName,
+                    name: relation.media.name,
                     url: this.buildMediaUrl(relation.media.id, relation.media.fileName),
                 };
             }

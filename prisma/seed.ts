@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -170,6 +171,18 @@ async function main() {
           { permission: { connect: { id: permissions[3].id } } }, // view:post
           { permission: { connect: { id: permissions[7].id } } }, // view:affiliate
         ],
+      },
+    },
+  });
+
+  const hashedPassword = await bcrypt.hash('11111111', 12);
+
+  const adminUser = await prisma.user.create({
+    data: {
+      email: 'admin@gmail.com',
+      password: hashedPassword,
+      role: {
+        connect: { id: adminRole.id },
       },
     },
   });

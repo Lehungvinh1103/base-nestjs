@@ -21,8 +21,13 @@ export async function handleMediaUpload({
     collection?: string;
 }): Promise<Media[]> {
     const uploadedMedia: Media[] = [];
-    console.log('Processing files:', files);
-    
+
+    if (files.length > 0) {
+        await deleteOldMedia(modelType, modelId, tx);
+    } else {
+        return []; // Không có ảnh mới, giữ nguyên media cũ
+    }
+
     for (const file of files) {
         if (!file) {
             console.error('Invalid file:', file);
@@ -79,3 +84,66 @@ export async function handleMediaUpload({
 
     return uploadedMedia;
 }
+
+export async function handleSelectedMedia({
+    tx,
+    mediaIds,
+    modelType,
+    modelId,
+    fieldType = 'default',
+}: {
+    tx: Prisma.TransactionClient;
+    mediaIds: number[];
+    modelType: string;
+    modelId: number;
+    fieldType?: string;
+}): Promise<Media[]> {
+    if (!mediaIds || mediaIds.length === 0) return [];
+
+    const selectedMedia = await tx.media.findMany({
+        where: {
+            id: { in: mediaIds },
+        },
+    });
+
+    // Liên kết ảnh với model
+    await tx.modelHasMedia.createMany({
+        data: selectedMedia.map(media => ({
+            modelType,
+            modelId,
+            mediaId: media.id,
+            fieldType,
+        })),
+    });
+
+    return selectedMedia;
+}
+
+export async function deleteOldMedia(modelType: string, modelId: number, tx: Prisma.TransactionClient) {
+  const mediaToDelete = await tx.modelHasMedia.findMany({
+    where: { modelType, modelId },
+    include: { media: true },
+  });
+
+  for (const item of mediaToDelete) {
+    const mediaId = item.media.id;
+
+    const mediaDir = path.join(process.cwd(), 'uploads', mediaId.toString());
+
+    await tx.modelHasMedia.delete({ where: { id: item.id } });
+
+    const stillUsed = await tx.modelHasMedia.count({ where: { mediaId } });
+
+    if (stillUsed === 0) {
+
+      await tx.media.delete({ where: { id: mediaId } });
+
+
+      if (fs.existsSync(mediaDir)) {
+        fs.rmSync(mediaDir, { recursive: true, force: true });
+      }
+    }
+  }
+}
+
+

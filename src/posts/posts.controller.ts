@@ -10,6 +10,7 @@ import {
   Request,
   UseInterceptors,
   UploadedFiles,
+  BadRequestException,
 } from '@nestjs/common';
 import { PostsService } from './posts.service';
 import { CreatePostDto, UpdatePostDto } from './dto/post.dto';
@@ -18,16 +19,17 @@ import { PermissionGuard } from '../auth/guards/permission.guard';
 import { RequiredPermission } from '../common/decorators/required-permission.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { AnyFilesInterceptor, FilesInterceptor } from '@nestjs/platform-express';
-import { ApiConsumes } from '@nestjs/swagger';
+import { ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { MediaUploadService } from 'src/media/media-upload.service';
 
+@ApiTags('posts')
 @Controller('posts')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class PostsController {
   constructor(
     private readonly postsService: PostsService,
     private readonly mediaUploadService: MediaUploadService
-  ) {}
+  ) { }
 
   @Public()
   @Get()
@@ -49,7 +51,7 @@ export class PostsController {
 
   @Post()
   @RequiredPermission('create:post')
-  @UseInterceptors(FilesInterceptor('files', 10, {
+  @UseInterceptors(FilesInterceptor('image', 10, {
     limits: {
       fileSize: 10 * 1024 * 1024, // 10MB limit
     },
@@ -60,18 +62,37 @@ export class PostsController {
       cb(null, true);
     },
   }))
-  @ApiConsumes('multipart/form-data') 
-  create(@Request() req, @UploadedFiles() files: Express.Multer.File[], @Body() dto: CreatePostDto) {
-    if (!files || files.length === 0) {
-      throw new Error('No files were uploaded');
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: CreatePostDto })
+  create(@Request() req, @UploadedFiles() image: Express.Multer.File[], @Body() dto: CreatePostDto) {
+    if (!image || image.length === 0) {
+      throw new BadRequestException('No image file provided');
     }
-    return this.postsService.create(req.user.id, files, dto);
+    return this.postsService.create(req.user.id, image, dto);
   }
 
   @Patch(':id')
   @RequiredPermission('update:post')
-  update(@Param('id') id: string, @Body() dto: UpdatePostDto) {
-    return this.postsService.update(+id, dto);
+  @UseInterceptors(FilesInterceptor('image', 10, {
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      if (!file.mimetype.match(/^image\/(jpeg|png|jpg)$/)) {
+        return cb(new Error('Only JPEG, PNG, and JPG files are allowed!'), false);
+      }
+      cb(null, true);
+    },
+  }))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: UpdatePostDto })
+  update(
+    @Param('id') id: string,
+    @UploadedFiles() image: Express.Multer.File[],
+    @Body() dto: UpdatePostDto,
+    @Request() req
+  ) {
+    return this.postsService.update(+id, dto, image, req.user.id);
   }
 
   @Delete(':id')

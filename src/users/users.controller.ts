@@ -8,6 +8,8 @@ import {
   Delete,
   UseGuards,
   Request,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import {
@@ -19,16 +21,32 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionGuard } from '../auth/guards/permission.guard';
 import { RequiredPermission } from '../common/decorators/required-permission.decorator';
 import { Public } from '../common/decorators/public.decorator';
+import { ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
+import { FilesInterceptor } from '@nestjs/platform-express';
 
+@ApiTags('users')
 @Controller('users')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @Post()
+  @UseInterceptors(FilesInterceptor('avatar', 1, {
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      if (!file.mimetype.match(/^image\/(jpeg|png|jpg)$/)) {
+        return cb(new Error('Only JPEG, PNG, and JPG files are allowed!'), false);
+      }
+      cb(null, true);
+    },
+  }))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: CreateUserDto })
   @RequiredPermission('create:user')
-  create(@Body() dto: CreateUserDto) {
-    return this.usersService.create(dto);
+  create(@Body() dto: CreateUserDto, @UploadedFiles() avatar: Express.Multer.File[]) {
+    return this.usersService.create(dto, avatar);
   }
 
   @Get()
@@ -45,8 +63,21 @@ export class UsersController {
 
   @Patch(':id')
   @RequiredPermission('update:user')
-  update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.usersService.update(+id, dto);
+  @UseInterceptors(FilesInterceptor('avatar', 10, {
+      limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB limit
+      },
+      fileFilter: (req, file, cb) => {
+        if (!file.mimetype.match(/^image\/(jpeg|png|jpg)$/)) {
+          return cb(new Error('Only JPEG, PNG, and JPG files are allowed!'), false);
+        }
+        cb(null, true);
+      },
+    }))
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({ type: UpdateUserDto })
+  update(@Param('id') id: string, @Body() dto: UpdateUserDto, @UploadedFiles() avatar: Express.Multer.File[]) {
+    return this.usersService.update(+id, dto, avatar);
   }
 
   @Delete(':id')
@@ -61,7 +92,20 @@ export class UsersController {
   }
 
   @Patch('profile/me')
-  updateProfile(@Request() req, @Body() dto: UpdateProfileDto) {
-    return this.usersService.updateProfile(req.user.id, dto);
+  @UseInterceptors(FilesInterceptor('avatar', 10, {
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      if (!file.mimetype.match(/^image\/(jpeg|png|jpg)$/)) {
+        return cb(new Error('Only JPEG, PNG, and JPG files are allowed!'), false);
+      }
+      cb(null, true);
+    },
+  }))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: UpdateProfileDto })
+  updateProfile(@Request() req, @Body() dto: UpdateProfileDto, @UploadedFiles() avatar: Express.Multer.File[]) {
+    return this.usersService.updateProfile(req.user.id, dto, avatar);
   }
 }
