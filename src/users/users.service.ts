@@ -13,7 +13,7 @@ import {
 } from './dto/user.dto';
 import * as bcrypt from 'bcrypt';
 import { Media, Prisma } from '@prisma/client';
-import { handleMediaUpload } from 'src/media/media.handler';
+import { deleteOldMedia, handleMediaUpload } from 'src/media/media.handler';
 import { MediaUtils } from 'src/common/utils/media.util';
 
 @Injectable()
@@ -208,16 +208,24 @@ export class UsersService {
     if (!id || isNaN(id)) {
       throw new BadRequestException('Invalid user ID');
     }
-
+  
     await this.findUserOrThrow(id);
+  
+    return await this.prisma.$transaction(async (tx) => {
 
-    const deletedUser = await this.prisma.user.delete({
-      where: { id },
-      include: this.userInclude,
+      await deleteOldMedia('User', id, tx);
+      
+
+      const deletedUser = await this.prisma.user.delete({
+        where: { id },
+        include: this.userInclude,
+      });
+  
+
+      return this.excludePassword(deletedUser);
     });
-
-    return this.excludePassword(deletedUser);
   }
+  
 
   async updateProfile(
     userId: number,
