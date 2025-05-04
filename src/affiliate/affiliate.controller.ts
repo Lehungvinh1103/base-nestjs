@@ -8,12 +8,17 @@ import {
   Delete,
   UseGuards,
   Request,
+  Headers,
+  Ip,
+  BadRequestException,
 } from '@nestjs/common';
 import { AffiliateService } from './affiliate.service';
 import { CreateAffiliateDto, UpdateAffiliateDto } from './dto/affiliate.dto';
+import { CreateAffiliateClickDto } from './dto/affiliate-click.dto';
 import { RequiredPermission } from '../common/decorators/required-permission.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionGuard } from '../auth/guards/permission.guard';
+import { Public } from 'src/common/decorators/public.decorator';
 
 @Controller('affiliates')
 @UseGuards(JwtAuthGuard, PermissionGuard)
@@ -56,5 +61,24 @@ export class AffiliateController {
   @RequiredPermission('delete:affiliate')
   remove(@Request() req, @Param('id') id: string) {
     return this.affiliateService.remove(req.user.id, +id, this.getIsAdmin(req));
+  }
+
+  @Post('click')
+  @Public()
+  async handleClick(
+    @Body() dto: CreateAffiliateClickDto,
+    @Headers('user-agent') userAgent: string,
+    @Ip() ipAddress: string,
+  ) {
+    if (!userAgent) {
+      throw new BadRequestException('User agent is required');
+    }
+    return this.affiliateService.handleClick(dto, ipAddress, userAgent);
+  }
+
+  @Get(':id/clicks')
+  @RequiredPermission('view:affiliate')
+  getClicks(@Request() req, @Param('id') id: string) {
+    return this.affiliateService.getClicks(req.user.id, +id);
   }
 }

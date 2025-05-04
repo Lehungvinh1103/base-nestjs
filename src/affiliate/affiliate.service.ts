@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAffiliateDto, UpdateAffiliateDto } from './dto/affiliate.dto';
+import { CreateAffiliateClickDto } from './dto/affiliate-click.dto';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class AffiliateService {
@@ -139,6 +141,85 @@ export class AffiliateService {
 
     return this.prisma.affiliate.delete({
       where: { id },
+    });
+  }
+
+  async handleClick(dto: CreateAffiliateClickDto, ipAddress: string, userAgent: string) {
+    return await this.prisma.$transaction(async (tx) => {
+      const affiliate = await tx.affiliate.findUnique({
+        where: { code: dto.code },
+      });
+
+      if (!affiliate) {
+        throw new NotFoundException('Invalid affiliate code');
+      }
+
+      const token = await tx.affiliateClick.findFirst({
+        where: { token: dto.token },
+      });
+
+      if (token) {
+        throw new BadRequestException('Token already used');
+      }
+
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const recentClicks = await tx.affiliateClick.count({
+        where: {
+          affiliateId: affiliate.id,
+          ipAddress: ipAddress,
+          userAgent: userAgent,
+
+          createdAt: {
+            gte: oneHourAgo,
+          },
+        },
+      });
+
+      if (recentClicks > 30) {
+        throw new BadRequestException('Suspicious click activity detected');
+      }
+
+      // Create click record
+      const click = await tx.affiliateClick.create({
+        data: {
+          affiliateId: affiliate.id,
+          ipAddress: ipAddress,
+          userAgent: userAgent,
+          token: dto.token
+        },
+      });
+
+      await tx.affiliate.update({
+        where: { id: affiliate.id },
+        data: {
+          clicks: {
+            increment: 1,
+          },
+        },
+      });
+
+      return click;
+    });
+  }
+
+  async getClicks(userId: number, affiliateId: number) {
+    const isUserAdmin = await this.isAdmin(userId);
+
+    // Verify affiliate belongs to user or user is admin
+    const affiliate = await this.prisma.affiliate.findFirst({
+      where: {
+        id: affiliateId,
+        ...(isUserAdmin ? {} : { userId }),
+      },
+    });
+
+    if (!affiliate) {
+      throw new NotFoundException('Affiliate not found or access denied');
+    }
+
+    return this.prisma.affiliateClick.findMany({
+      where: { affiliateId },
+      orderBy: { createdAt: 'desc' },
     });
   }
 }
