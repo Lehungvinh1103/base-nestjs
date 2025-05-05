@@ -11,6 +11,7 @@ import {
   Headers,
   Ip,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { AffiliateService } from './affiliate.service';
 import { CreateAffiliateDto, UpdateAffiliateDto } from './dto/affiliate.dto';
@@ -19,11 +20,14 @@ import { RequiredPermission } from '../common/decorators/required-permission.dec
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionGuard } from '../auth/guards/permission.guard';
 import { Public } from 'src/common/decorators/public.decorator';
+import { StatsFilterDto } from './dto/stats-filter.dto';
+import { ApiOperation } from '@nestjs/swagger';
+
 
 @Controller('affiliates')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class AffiliateController {
-  constructor(private readonly affiliateService: AffiliateService) {}
+  constructor(private readonly affiliateService: AffiliateService) { }
 
   private getIsAdmin(req): boolean {
     return req.user?.role?.name === 'admin';
@@ -77,8 +81,35 @@ export class AffiliateController {
   }
 
   @Get(':id/clicks')
-  @RequiredPermission('view:affiliate')
   getClicks(@Request() req, @Param('id') id: string) {
     return this.affiliateService.getClicks(req.user.id, +id);
   }
+
+  @ApiOperation({ summary: 'Lấy thống kê tổng quan cho dashboard' })
+  @Get('dashboard/stats')
+  getDashboardStats(@Request() req, @Query() filters: StatsFilterDto) {
+    return this.affiliateService.getDashboardStats(req.user.id, filters);
+  }
+
+  @ApiOperation({ summary: 'Lấy bảng xếp hạng người dùng theo lượt click' })
+  @Get('stats/top')
+  getTopAffiliates(@Request() req, @Query() filters: StatsFilterDto) {
+    return this.affiliateService.getTopAffiliates(req.user.id, filters);
+  }
+
+  @ApiOperation({ summary: 'Lấy thống kê theo thời gian (tháng, quý)' })
+  @Get('stats/time-stats')
+  getTimeStats(@Request() req, @Query('affiliateId') affiliateId?: string) {
+    return this.affiliateService.getAffiliateStatsByTime(
+      req.user.id,
+      affiliateId ? +affiliateId : undefined
+    );
+  }
+
+  @ApiOperation({ summary: 'Thống kê dữ liệu người dùng theo lượt click' })
+  @Get('stats/user-stats')
+  getUserStats(@Request() req, @Query() filters: StatsFilterDto) {
+    return this.affiliateService.getUserStatsOverTime(req.user.id, filters);
+  }
+
 }

@@ -6,10 +6,13 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { join } from 'path';
 import * as express from 'express';
+import { BigIntInterceptor } from './common/interceptors/bigint.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
+
+  app.useGlobalInterceptors(new BigIntInterceptor());
+
   // Enable CORS with specific options
   app.enableCors({
     origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
