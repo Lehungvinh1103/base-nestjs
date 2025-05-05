@@ -21,9 +21,9 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionGuard } from '../auth/guards/permission.guard';
 import { Public } from 'src/common/decorators/public.decorator';
 import { StatsFilterDto } from './dto/stats-filter.dto';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
-
+ApiTags('Affiliate')
 @Controller('affiliates')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class AffiliateController {
@@ -68,6 +68,7 @@ export class AffiliateController {
   }
 
   @Post('click')
+  @ApiOperation({ summary: 'Cập nhật lượt click cho aff' })
   @Public()
   async handleClick(
     @Body() dto: CreateAffiliateClickDto,
