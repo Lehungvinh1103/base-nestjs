@@ -23,7 +23,7 @@ import { Public } from 'src/common/decorators/public.decorator';
 import { StatsFilterDto } from './dto/stats-filter.dto';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
-ApiTags('Affiliate')
+@ApiTags('Affiliate')
 @Controller('affiliates')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class AffiliateController {
