@@ -10,6 +10,7 @@ import { Reflector } from '@nestjs/core';
 import { PrismaModule } from '../prisma/prisma.module';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { MailModule } from 'src/mail/mail.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       }),
       inject: [ConfigService],
     }),
+    MailModule,
   ],
   providers: [
     AuthService,

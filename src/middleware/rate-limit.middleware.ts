@@ -19,8 +19,13 @@ export class RateLimitMiddleware implements NestMiddleware {
   async use(req: Request, res: Response, next: NextFunction) {
     try {
       const key = this.getKey(req);
-      const limiter = this.shouldUseStrictLimiter(req) 
-        ? this.rateLimiterStrict 
+
+      const isStrict = this.shouldUseStrictLimiter(req);
+      console.log("originalUrl:", req.originalUrl);
+      console.log("strict:", isStrict);
+      
+      const limiter = isStrict
+        ? this.rateLimiterStrict
         : this.rateLimiter;
 
       await limiter.consume(key);
@@ -54,12 +59,13 @@ export class RateLimitMiddleware implements NestMiddleware {
   private shouldUseStrictLimiter(req: Request): boolean {
     // Apply strict rate limiting for sensitive endpoints
     const sensitiveEndpoints = [
-      '/auth/login',
-      '/auth/register',
-      '/auth/forgot-password',
-      '/auth/reset-password',
+      '/api/auth/login',
+      '/api/auth/register',
+      '/api/auth/forgot-password',
+      '/api/auth/reset-password',
     ];
 
-    return sensitiveEndpoints.some(endpoint => req.path.startsWith(endpoint));
+    // Check originalUrl which contains the full path including global prefix
+    return sensitiveEndpoints.some(endpoint => req.originalUrl.endsWith(endpoint));
   }
 } 
