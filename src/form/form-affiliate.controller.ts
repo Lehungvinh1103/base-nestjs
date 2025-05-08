@@ -39,19 +39,16 @@ export class FormAffiliateController {
     }
 
     @Get(':id')
-    @Public()
     findOne(@Request() req, @Param('id') id: string) {
         return this.formService.getFormAffiliate(+id);
     }
 
     @Get()
-    @Public()
     findAll(@Request() req) {
         return this.formService.getAllFormAffiliate();
     }
 
     @Patch(':id')
-    @Public()
     update(
         @Request() req,
         @Param('id') id: string,
@@ -61,7 +58,6 @@ export class FormAffiliateController {
     }
 
     @Delete(':id')
-    @Public()
     remove(@Request() req, @Param('id') id: string) {
         return this.formService.deleteFormAffiliate(+id);
     }

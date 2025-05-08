@@ -39,18 +39,15 @@ export class FormEmailController {
     }
 
     @Get(':id')
-    @Public()
     findOne(@Request() req, @Param('id') id: string) {
         return this.formService.getFormEmail(+id);
     }
     @Get()
-    @Public()
     findAll(@Request() req) {
         return this.formService.getAllFormEmail();
     }
 
     @Patch(':id')
-    @Public()
     update(
         @Request() req,
         @Param('id') id: string,
@@ -60,7 +57,6 @@ export class FormEmailController {
     }
 
     @Delete(':id')
-    @Public()
     remove(@Request() req, @Param('id') id: string) {
         return this.formService.deleteFormEmail(+id);
     }
