@@ -8,6 +8,7 @@ import { join } from 'path';
 import * as express from 'express';
 import { BigIntInterceptor } from './common/interceptors/bigint.interceptor';
 
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 

@@ -8,7 +8,7 @@ export class MailService {
     constructor(private mailerService: MailerService) { }
 
     async sendResetPasswordEmail(email: string, resetToken: string, name: string) {
-        if (!process.env.MAIL_HOST || !process.env.MAIL_FROM_ADDRESS) {
+        if (!process.env.MAIL_HOST || !process.env.MAIL_USER || !process.env.MAIL_PASSWORD) {
             throw new BadRequestException('Mailer configuration is missing.');
         }
         
@@ -25,7 +25,7 @@ export class MailService {
                     resetUrl,
                     img,
                     appName,
-                    name,
+                    name,   
                 },
             });
             this.logger.log(`Reset password email sent to: ${email}`);

@@ -12,6 +12,7 @@ import { MiddlewareModule } from './middleware/middleware.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { FormModule } from './form/form.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { join } from 'path';
     MediaModule,
     ModelHasMediaModule,
     AffiliateModule,
+    FormModule,
     RolesModule,
     UsersModule,
     MulterModule.register({
