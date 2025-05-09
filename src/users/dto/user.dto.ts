@@ -1,5 +1,5 @@
 import { Media } from '@prisma/client';
-import { Transform } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import { IsString, IsEmail, IsOptional, IsNumber, IsBoolean, MaxLength, MinLength, Matches } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Match } from 'src/common/validators/match.validator';
@@ -215,16 +215,12 @@ export class UserResponseDto {
   })
   roleId: number;
 
-  @ApiProperty({
-    description: 'The creation date of the user',
-    type: Date,
-  })
+  @ApiProperty()
+  @Transform(({ value }) => value instanceof Date ? value.toISOString() : value)
   createdAt: Date;
-
-  @ApiProperty({
-    description: 'The last update date of the user',
-    type: Date,
-  })
+  
+  @ApiProperty()
+  @Transform(({ value }) => value instanceof Date ? value.toISOString() : value)
   updatedAt: Date;
 
   @ApiPropertyOptional({

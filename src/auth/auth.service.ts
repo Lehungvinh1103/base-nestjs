@@ -228,7 +228,8 @@ export class AuthService {
     
     const email = user.email;
     const name = user.name ?? email.split('@')[0];
-    await this.mailService.sendResetPasswordEmail(email, resetToken, name);
+    const locale = forgotPasswordDto.locale || 'en';
+    await this.mailService.sendResetPasswordEmail(email, resetToken, name, locale);
   
     return {
       success: true,

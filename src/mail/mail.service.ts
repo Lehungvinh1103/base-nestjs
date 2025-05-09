@@ -7,12 +7,12 @@ export class MailService {
 
     constructor(private mailerService: MailerService) { }
 
-    async sendResetPasswordEmail(email: string, resetToken: string, name: string) {
+    async sendResetPasswordEmail(email: string, resetToken: string, name: string, locale: string) {
         if (!process.env.MAIL_HOST || !process.env.MAIL_USER || !process.env.MAIL_PASSWORD) {
             throw new BadRequestException('Mailer configuration is missing.');
         }
         
-        const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
+        const resetUrl = `${process.env.FRONTEND_URL}/${locale}/auth/resetPassword?token=${resetToken}&email=${encodeURIComponent(email)}`;
         const img = `${process.env.APP_URL}/uploads/logo/maxima-logo.png`;
         const appName = process.env.APP_NAME ?? 'APP_NAME';
 

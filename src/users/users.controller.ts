@@ -16,6 +16,7 @@ import {
   CreateUserDto,
   UpdateUserDto,
   UpdateProfileDto,
+  UserResponseDto,
 } from './dto/user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionGuard } from '../auth/guards/permission.guard';
@@ -23,6 +24,7 @@ import { RequiredPermission } from '../common/decorators/required-permission.dec
 import { Public } from '../common/decorators/public.decorator';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { FilesInterceptor } from '@nestjs/platform-express';
+import { plainToInstance } from 'class-transformer';
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -46,39 +48,43 @@ export class UsersController {
   @ApiConsumes('multipart/form-data')
   @ApiBody({ type: CreateUserDto })
   @RequiredPermission('create:user')
-  create(@Body() dto: CreateUserDto, @UploadedFiles() avatar: Express.Multer.File[]) {
-    return this.usersService.create(dto, avatar);
+  async create(@Body() dto: CreateUserDto, @UploadedFiles() avatar: Express.Multer.File[]) {
+    const user = await this.usersService.create(dto, avatar);
+    return plainToInstance(UserResponseDto, user);
   }
 
   @Get()
   @RequiredPermission('view:user')
-  findAll() {
-    return this.usersService.findAll();
+  async findAll() {
+    const user = await this.usersService.findAll();
+    return plainToInstance(UserResponseDto, user);
   }
 
   @Get(':id')
   @RequiredPermission('view:user')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(+id);
+  async findOne(@Param('id') id: string) {
+    const user = await this.usersService.findOne(+id);
+    return plainToInstance(UserResponseDto, user);
   }
 
   @Patch(':id')
   @RequiredPermission('update:user')
   @UseInterceptors(FilesInterceptor('avatar', 10, {
-      limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB limit
-      },
-      fileFilter: (req, file, cb) => {
-        if (!file.mimetype.match(/^image\/(jpeg|png|jpg)$/)) {
-          return cb(new Error('Only JPEG, PNG, and JPG files are allowed!'), false);
-        }
-        cb(null, true);
-      },
-    }))
-    @ApiConsumes('multipart/form-data')
-    @ApiBody({ type: UpdateUserDto })
-  update(@Param('id') id: string, @Body() dto: UpdateUserDto, @UploadedFiles() avatar: Express.Multer.File[]) {
-    return this.usersService.update(+id, dto, avatar);
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      if (!file.mimetype.match(/^image\/(jpeg|png|jpg)$/)) {
+        return cb(new Error('Only JPEG, PNG, and JPG files are allowed!'), false);
+      }
+      cb(null, true);
+    },
+  }))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: UpdateUserDto })
+  async update(@Param('id') id: string, @Body() dto: UpdateUserDto, @UploadedFiles() avatar: Express.Multer.File[]) {
+    const user = await this.usersService.update(+id, dto, avatar);
+    return plainToInstance(UserResponseDto, user);
   }
 
   @Delete(':id')

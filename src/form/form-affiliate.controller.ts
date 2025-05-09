@@ -8,59 +8,62 @@ import {
     Delete,
     UseGuards,
     Request,
-    Headers,
-    Ip,
-    BadRequestException,
-    Query,
+    ForbiddenException,
 } from '@nestjs/common';
-import { RequiredPermission } from '../common/decorators/required-permission.decorator';
+import { Public } from 'src/common/decorators/public.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionGuard } from '../auth/guards/permission.guard';
-import { Public } from 'src/common/decorators/public.decorator';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { FormService } from './form.service';
-import { CreateFormEmailDto, UpdateFormEmailDto } from './dto/form-email.dto';
-import { CreateFormAffDto, UpdateFormAffDto } from './dto/form-affiliate.dto';
+import {
+    CreateFormAffDto,
+    UpdateFormAffDto,
+} from './dto/form-affiliate.dto';
+import { FormAffResponseDto } from './dto/form-aff-response.dto';
+import { plainToInstance } from 'class-transformer';
+import { AdminOnly } from 'src/common/decorators/admin-only.decorator';
 
 @ApiTags('Form')
 @Controller('form-affiliate')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class FormAffiliateController {
-    constructor(private readonly formService: FormService) { }
-
-    private getIsAdmin(req): boolean {
-        return req.user?.role?.name === 'admin';
-    }
+    constructor(private readonly formService: FormService) {}
 
     @Post()
     @Public()
-    create(@Request() req, @Body() dto: CreateFormAffDto) {
-        return this.formService.createFormAffiliate(dto);
+    async create(@Body() dto: CreateFormAffDto) {
+        const result = await this.formService.createFormAffiliate(dto);
+        return plainToInstance(FormAffResponseDto, result);
     }
 
     @Get(':id')
-    findOne(@Request() req, @Param('id') id: string) {
-        return this.formService.getFormAffiliate(+id);
+    @AdminOnly()
+    async findOne(@Param('id') id: string) {
+        const result = await this.formService.getFormAffiliate(+id);
+        return plainToInstance(FormAffResponseDto, result);
     }
 
     @Get()
-    findAll(@Request() req) {
-        return this.formService.getAllFormAffiliate();
+    @AdminOnly()
+    async findAll() {
+        const result = await this.formService.getAllFormAffiliate();
+        return plainToInstance(FormAffResponseDto, result);
     }
 
     @Patch(':id')
-    update(
-        @Request() req,
+    @AdminOnly()
+    async update(
         @Param('id') id: string,
         @Body() dto: UpdateFormAffDto,
     ) {
-        return this.formService.updateFormAffiliate(+id, dto);
+        const result = await this.formService.updateFormAffiliate(+id, dto);
+        return plainToInstance(FormAffResponseDto, result);
     }
 
     @Delete(':id')
-    remove(@Request() req, @Param('id') id: string) {
-        return this.formService.deleteFormAffiliate(+id);
+    @AdminOnly()
+    async remove(@Param('id') id: string) {
+        const result = await this.formService.deleteFormAffiliate(+id);
+        return plainToInstance(FormAffResponseDto, result);
     }
-
-
 }

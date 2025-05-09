@@ -21,8 +21,6 @@ export class RateLimitMiddleware implements NestMiddleware {
       const key = this.getKey(req);
 
       const isStrict = this.shouldUseStrictLimiter(req);
-      console.log("originalUrl:", req.originalUrl);
-      console.log("strict:", isStrict);
       
       const limiter = isStrict
         ? this.rateLimiterStrict

@@ -4,4 +4,7 @@ export class ForgotPasswordDto {
   @IsEmail()
   @IsNotEmpty()
   email: string;
+
+  @IsNotEmpty()
+  locale: string;
 } 

@@ -13,7 +13,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PostsService } from './posts.service';
-import { CreatePostDto, UpdatePostDto } from './dto/post.dto';
+import { CreatePostDto, UpdatePostDto, PostResponseDto } from './dto/post.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionGuard } from '../auth/guards/permission.guard';
 import { RequiredPermission } from '../common/decorators/required-permission.decorator';
@@ -21,6 +21,7 @@ import { Public } from '../common/decorators/public.decorator';
 import { AnyFilesInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { MediaUploadService } from 'src/media/media-upload.service';
+import { plainToInstance } from 'class-transformer';
 
 @ApiTags('posts')
 @Controller('posts')
@@ -33,8 +34,9 @@ export class PostsController {
 
   @Public()
   @Get()
-  findAll() {
-    return this.postsService.findAll();
+  async findAll() {
+    const posts = await this.postsService.findAll();
+    return plainToInstance(PostResponseDto, posts);
   }
 
   @Public()
@@ -45,8 +47,9 @@ export class PostsController {
 
   @Public()
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.postsService.findOne(+id);
+  async findOne(@Param('id') id: string) {
+    const post = await this.postsService.findOne(+id);
+    return plainToInstance(PostResponseDto, post);
   }
 
   @Post()

@@ -114,3 +114,36 @@ export class UpdatePostDto extends PartialType(CreatePostDto) {
   @IsOptional()
   published?: boolean;
 }
+
+export class PostResponseDto {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty()
+  title: string;
+
+  @ApiProperty({ required: false })
+  description?: string;
+
+  @ApiProperty()
+  content: string;
+
+  @ApiProperty({ required: false })
+  slug?: string;
+
+  @ApiProperty({ required: false })
+  published?: boolean;
+
+  @ApiProperty()
+  authorId: number;
+
+  @ApiProperty()
+  @Transform(({ value }) => value instanceof Date ? value.toISOString() : value)
+  createdAt: Date;
+  
+  @ApiProperty()
+  @Transform(({ value }) => value instanceof Date ? value.toISOString() : value)
+  updatedAt: Date;
+
+  // Các trường khác nếu cần
+}
