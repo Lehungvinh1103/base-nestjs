@@ -215,6 +215,11 @@ export class UsersService {
 
       if (!existingAffiliate) {
         await this.createAffiliateCode(id, tx, dto.codeAff);
+      } else if (dto.codeAff) {
+        await tx.affiliate.update({
+          where: { id: existingAffiliate.id },
+          data: { code: dto.codeAff },
+        });
       }
 
       let uploadedMedia: Media[] = [];
