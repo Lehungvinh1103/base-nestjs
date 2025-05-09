@@ -3,7 +3,6 @@ import { LoggerMiddleware } from './logger.middleware';
 import { RequestIdMiddleware } from './request-id.middleware';
 import { APP_FILTER } from '@nestjs/core';
 import { ErrorHandlerMiddleware } from './error-handler.middleware';
-import { CsrfMiddleware } from './csrf.middleware';
 import { RateLimitMiddleware } from './rate-limit.middleware';
 
 @Module({
@@ -21,7 +20,6 @@ export class MiddlewareModule implements NestModule {
         RequestIdMiddleware,
         LoggerMiddleware,
         RateLimitMiddleware,
-        CsrfMiddleware,
       )
       .forRoutes('*');
   }
