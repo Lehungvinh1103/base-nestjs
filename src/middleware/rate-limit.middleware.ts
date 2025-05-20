@@ -7,13 +7,13 @@ export class RateLimitMiddleware implements NestMiddleware {
   private readonly rateLimiter = new RateLimiterMemory({
     points: 100, // Number of points
     duration: 60, // Per 60 seconds
-    blockDuration: 60 * 15, // Block for 15 minutes if limit exceeded
+    blockDuration: 60 * 5, 
   });
 
   private readonly rateLimiterStrict = new RateLimiterMemory({
     points: 10, // Number of points
     duration: 60, // Per 60 seconds
-    blockDuration: 60 * 60, // Block for 1 hour if limit exceeded
+    blockDuration: 60 * 15, 
   });
 
   async use(req: Request, res: Response, next: NextFunction) {

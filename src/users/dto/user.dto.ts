@@ -1,6 +1,6 @@
 import { Media } from '@prisma/client';
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsString, IsEmail, IsOptional, IsNumber, IsBoolean, MaxLength, MinLength, Matches } from 'class-validator';
+import { IsString, IsEmail, IsOptional, IsNumber, IsBoolean, MaxLength, MinLength, Matches, IsNotEmpty } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Match } from 'src/common/validators/match.validator';
 
@@ -46,8 +46,8 @@ export class CreateUserDto {
     maxLength: 255,
   })
   @IsString()
-  @IsOptional()
-  name?: string;
+  @IsNotEmpty()
+  name: string;
 
   @ApiProperty({
     description: 'The affiliate code of the user (optional)',
@@ -203,17 +203,17 @@ export class UserResponseDto {
   })
   email: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: 'The name of the user',
     type: String,
   })
-  name?: string;
+  name: string;
 
   @ApiProperty({
     description: 'The role ID of the user',
     type: Number,
   })
-  roleId: number;
+  roleId: number | null;
 
   @ApiProperty()
   @Transform(({ value }) => value instanceof Date ? value.toISOString() : value)

@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, IsOptional, IsNumber, Matches, MaxLength } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, IsNumber, Matches, MaxLength, IsNotEmpty } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { Match } from '../../common/validators/match.validator';
 
@@ -22,9 +22,9 @@ export class RegisterDto {
   confirmPassword: string;
 
   @IsString()
-  @IsOptional()
-  @MaxLength(100)
-  name?: string;
+  @IsNotEmpty()
+  @MaxLength(255)
+  name: string;
 }
 
 export class LoginDto {

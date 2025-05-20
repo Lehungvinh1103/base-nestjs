@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreatePostDto, UpdatePostDto } from './dto/post.dto';
 import { generateSlug } from '../common/utils/slug.util';
 import { MediaUtils } from 'src/common/utils/media.util';
-import { deleteOldMedia, handleMediaUpload } from 'src/media/media.handler';
+import { cleanUpMediaFolders, deleteOldMedia, handleMediaUpload } from 'src/media/media.handler';
 import { Media, Prisma } from '@prisma/client';
 
 
@@ -126,16 +126,23 @@ export class PostsService {
   
     await this.ensurePostExists(id);
   
-    return await this.prisma.$transaction(async (tx) => {
-      // Xoá media liên quan
-      await deleteOldMedia('Post', id, tx);
+    let mediaIdsToDelete: number[] = [];
   
-      // Xoá bài viết
-      return await tx.post.delete({
+    return await this.prisma.$transaction(async (tx) => {
+      mediaIdsToDelete = await deleteOldMedia('Post', id, tx);
+  
+      const deletedPost = await tx.post.delete({
         where: { id },
       });
+  
+      return deletedPost;
+    }).finally(async () => {
+      if (mediaIdsToDelete.length > 0) {
+        await cleanUpMediaFolders(mediaIdsToDelete);
+      }
     });
   }
+  
   
 
   private async getPostOrFail(where: { id?: number; slug?: string }) {

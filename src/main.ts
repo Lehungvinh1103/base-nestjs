@@ -16,11 +16,22 @@ async function bootstrap() {
 
   // Enable CORS with specific options
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
-  });
+  origin: (origin, callback) => {
+    // Danh sách các origin được phép
+    const allowedOrigins = ['https://maximagoldhedging.com', 'http://localhost:3000'];
+
+    // Nếu không có origin (như curl) hoặc origin nằm trong danh sách cho phép
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true, // Cho phép gửi cookie/credentials
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+});
+  
 
   // Serve static files from root directory before setting global prefix
   const rootPath = join(process.cwd(), 'uploads');
@@ -71,7 +82,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  await app.listen(process.env.PORT || 3001);
+  await app.listen(4000);
   console.log(`Application is running on: ${await app.getUrl()}`);
   console.log('Static path:', rootPath);
 }

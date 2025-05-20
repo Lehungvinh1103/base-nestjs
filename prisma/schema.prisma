@@ -53,7 +53,7 @@ model User {
   id               Int         @id @default(autoincrement()) @map("id")
   email            String      @unique @map("email") @db.VarChar(255)
   password         String      @map("password")
-  name             String?     @map("name") @db.VarChar(255)
+  name             String      @map("name") @db.VarChar(255)
   role             Role?       @relation(fields: [roleId], references: [id], onDelete: SetNull)
   roleId           Int?        @map("role_id")
   posts            Post[]
@@ -67,6 +67,7 @@ model User {
   resetToken       String?     @map("reset_token")
   resetTokenExpiry DateTime?   @map("reset_token_expiry")
 
+  @@unique([name])
   @@index([roleId])
   @@map("users")
 }

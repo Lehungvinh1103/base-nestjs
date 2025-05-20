@@ -119,31 +119,47 @@ export async function handleSelectedMedia({
     return selectedMedia;
 }
 
-export async function deleteOldMedia(modelType: string, modelId: number, tx: Prisma.TransactionClient) {
-  const mediaToDelete = await tx.modelHasMedia.findMany({
-    where: { modelType, modelId },
-    include: { media: true },
-  });
-
-  for (const item of mediaToDelete) {
-    const mediaId = item.media.id;
-
-    const mediaDir = path.join(process.cwd(), 'uploads', mediaId.toString());
-
-    await tx.modelHasMedia.delete({ where: { id: item.id } });
-
-    const stillUsed = await tx.modelHasMedia.count({ where: { mediaId } });
-
-    if (stillUsed === 0) {
-
-      await tx.media.delete({ where: { id: mediaId } });
-
-
-      if (fs.existsSync(mediaDir)) {
-        fs.rmSync(mediaDir, { recursive: true, force: true });
+export async function deleteOldMedia(
+    modelType: string,
+    modelId: number,
+    tx: Prisma.TransactionClient
+  ): Promise<number[]> {
+    const mediaToDelete = await tx.modelHasMedia.findMany({
+      where: { modelType, modelId },
+      include: { media: true },
+    });
+  
+    const mediaIdsToDelete: number[] = [];
+  
+    for (const item of mediaToDelete) {
+      const mediaId = item.media.id;
+  
+      await tx.modelHasMedia.delete({ where: { id: item.id } });
+  
+      const stillUsed = await tx.modelHasMedia.count({ where: { mediaId } });
+  
+      if (stillUsed === 0) {
+        await tx.media.delete({ where: { id: mediaId } });
+        mediaIdsToDelete.push(mediaId);
       }
     }
+  
+    return mediaIdsToDelete;
   }
-}
+  
+  export async function cleanUpMediaFolders(mediaIds: number[]) {
+    await Promise.all(
+      mediaIds.map(async (id) => {
+        const mediaDir = path.join(process.cwd(), 'uploads', id.toString());
+        try {
+          if (fs.existsSync(mediaDir)) {
+            await fs.promises.rm(mediaDir, { recursive: true, force: true });
+          }
+        } catch (err) {
+          console.error(`Lỗi xóa thư mục media ${id}:`, err);
+        }
+      })
+    );
+  }
 
 

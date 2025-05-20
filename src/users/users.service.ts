@@ -13,7 +13,7 @@ import {
 } from './dto/user.dto';
 import * as bcrypt from 'bcrypt';
 import { Media, Prisma } from '@prisma/client';
-import { deleteOldMedia, handleMediaUpload } from 'src/media/media.handler';
+import { cleanUpMediaFolders, deleteOldMedia, handleMediaUpload } from 'src/media/media.handler';
 import { MediaUtils } from 'src/common/utils/media.util';
 
 @Injectable()
@@ -38,7 +38,7 @@ export class UsersService {
 
   private async createAffiliateCode(userId: number, tx: Prisma.TransactionClient, customCode?: string) {
     let code = customCode ?? this.generateAffiliateCode(userId);
-  
+
     // Ensure uniqueness
     let existingCode = await tx.affiliate.findUnique({ where: { code } });
     while (existingCode) {
@@ -48,7 +48,7 @@ export class UsersService {
       code = this.generateAffiliateCode(userId);
       existingCode = await tx.affiliate.findUnique({ where: { code } });
     }
-  
+
     return tx.affiliate.create({
       data: {
         code,
@@ -57,12 +57,22 @@ export class UsersService {
       },
     });
   }
-  
+
 
   async create(dto: CreateUserDto, files: Express.Multer.File[]): Promise<UserResponseDto> {
     return await this.prisma.$transaction(async (tx) => {
-      const existing = await tx.user.findUnique({ where: { email: dto.email } });
-      if (existing) throw new BadRequestException('Email already in use');
+      const [emailExists, nameExists] = await Promise.all([
+        tx.user.findUnique({ where: { email: dto.email } }),
+        tx.user.findFirst({ where: { name: dto.name } }), 
+      ]);
+      
+      if (emailExists) {
+        throw new BadRequestException('Email already in use');
+      }
+      if (nameExists) {
+        throw new BadRequestException('Name already in use');
+      }
+      
 
       const role = await tx.role.findUnique({ where: { id: dto.roleId } });
       if (!role) throw new BadRequestException('Role not found');
@@ -107,8 +117,11 @@ export class UsersService {
   }
 
 
-  async findAll(): Promise<UserResponseDto[]> {
+  async findAll(currentUserId): Promise<UserResponseDto[]> {
     const users = await this.prisma.user.findMany({
+      where: {
+        id: { not: currentUserId },
+      },
       include: {
         ...this.userInclude,
         affiliates: true,
@@ -164,6 +177,20 @@ export class UsersService {
     };
   }
 
+  async findByName(name: string): Promise<UserResponseDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { name },
+      include:{affiliates: true,},
+    });
+  
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+  
+    return user;
+  }
+  
+
   async update(
     id: number,
     dto: UpdateUserDto,
@@ -177,13 +204,31 @@ export class UsersService {
       await this.findUserOrThrow(id);
 
       if (dto.email) {
-        const existing = await tx.user.findFirst({
-          where: { email: dto.email, id: { not: id } },
+        const existingEmail = await tx.user.findFirst({
+          where: {
+            email: dto.email,
+            id: { not: id }, // tránh so với chính mình
+          },
         });
-        if (existing) {
+      
+        if (existingEmail) {
           throw new BadRequestException('Email already in use');
         }
       }
+      
+      if (dto.name) {
+        const existingName = await tx.user.findFirst({
+          where: {
+            name: dto.name,
+            id: { not: id },
+          },
+        });
+      
+        if (existingName) {
+          throw new BadRequestException('Name already in use');
+        }
+      }
+      
 
       if (dto.roleId) {
         const role = await tx.role.findUnique({ where: { id: dto.roleId } });
@@ -216,6 +261,13 @@ export class UsersService {
       if (!existingAffiliate) {
         await this.createAffiliateCode(id, tx, dto.codeAff);
       } else if (dto.codeAff) {
+        const existingCode = await tx.affiliate.findUnique({
+          where: { code: dto.codeAff },
+        });
+        if (existingCode && existingCode.id !== existingAffiliate.id) {
+          throw new BadRequestException('Affiliate code already exists');
+        }
+
         await tx.affiliate.update({
           where: { id: existingAffiliate.id },
           data: { code: dto.codeAff },
@@ -262,24 +314,28 @@ export class UsersService {
     if (!id || isNaN(id)) {
       throw new BadRequestException('Invalid user ID');
     }
-  
+
     await this.findUserOrThrow(id);
-  
-    return await this.prisma.$transaction(async (tx) => {
 
-      await deleteOldMedia('User', id, tx);
-      
+    let mediaIdsToDelete: number[] = [];
 
-      const deletedUser = await this.prisma.user.delete({
+    const deletedUser = await this.prisma.$transaction(async (tx) => {
+      mediaIdsToDelete = await deleteOldMedia('User', id, tx);
+
+      const user = await tx.user.delete({
         where: { id },
         include: this.userInclude,
       });
-  
 
-      return this.excludePassword(deletedUser);
+      return user;
     });
+
+    await cleanUpMediaFolders(mediaIdsToDelete);
+
+    return this.excludePassword(deletedUser);
   }
-  
+
+
 
   async updateProfile(
     userId: number,
@@ -289,35 +345,47 @@ export class UsersService {
     if (!userId || isNaN(userId)) {
       throw new BadRequestException('Invalid user ID');
     }
-  
+
     return this.prisma.$transaction(async (tx) => {
       const user = await this.findUserOrThrow(userId);
-  
+
       const data: Prisma.UserUpdateInput = {};
-  
+
       if (dto.name) {
+        const existingName = await tx.user.findFirst({
+          where: {
+            name: dto.name,
+            id: { not: userId }, // loại trừ user hiện tại
+          },
+        });
+      
+        if (existingName) {
+          throw new BadRequestException('Name already in use');
+        }
+      
         data.name = dto.name;
       }
-  
+      
+
       if (dto.newPassword) {
         if (!dto.currentPassword)
           throw new UnauthorizedException('Current password is required');
-  
+
         const isMatch = await bcrypt.compare(dto.currentPassword, user.password);
         if (!isMatch) throw new UnauthorizedException('Incorrect current password');
-  
+
         data.password = await bcrypt.hash(dto.newPassword, 10);
       }
-  
+
       // Cập nhật thông tin người dùng
       const updatedUser = await tx.user.update({
         where: { id: userId },
         data,
         include: this.userInclude,
       });
-  
+
       let uploadedMedia: Media[] = [];
-  
+
       if (files && files.length > 0) {
         // Có file mới => upload
         uploadedMedia = await handleMediaUpload({
@@ -338,21 +406,21 @@ export class UsersService {
           },
           include: { media: true },
         });
-  
+
         if (existingMedia?.media) {
           uploadedMedia = [existingMedia.media];
         }
       }
-  
+
       const avatar = uploadedMedia[0] ? this.getMediaUrl(uploadedMedia[0]) : null;
-  
+
       return {
         ...this.excludePassword(updatedUser),
         avatar,
       };
     });
   }
-  
+
 
   private async findUserOrThrow(id: number | string) {
     const numericId = Number(id);

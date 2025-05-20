@@ -55,8 +55,8 @@ export class UsersController {
 
   @Get()
   @RequiredPermission('view:user')
-  async findAll() {
-    const user = await this.usersService.findAll();
+  async findAll(@Request() req) {
+    const user = await this.usersService.findAll(req.user.id);
     return plainToInstance(UserResponseDto, user);
   }
 
@@ -66,6 +66,14 @@ export class UsersController {
     const user = await this.usersService.findOne(+id);
     return plainToInstance(UserResponseDto, user);
   }
+
+  @Get('by-name/:name')
+  @Public()
+  async findByName(@Param('name') name: string) {
+    const user = await this.usersService.findByName(name);
+    return plainToInstance(UserResponseDto, user);
+  }
+
 
   @Patch(':id')
   @RequiredPermission('update:user')
